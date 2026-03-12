@@ -1,0 +1,12 @@
+YANG LO DAPATKAN:
+Fitur	Spesifikasi
+RAM usage	100-300MB
+Swap usage	2-4GB (auto expand)
+Swap total	12GB+ (otomatis)
+Timer	200 random
+Decoy files	100.000+ (hardlink)
+Backup lokasi	250+
+Anti OOM	oom_score_adj=-1000
+Anti-chattr	Aktif tiap 60 detik
+Cgroup	Memory limit 1GB
+Swappiness	95 (prioritas swap)
